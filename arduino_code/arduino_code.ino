@@ -21,6 +21,11 @@ bool waitForPowerButtonReset = false;
 
 bool waitForTareButtonReset = false;
 
+#define ROLLING_BUFFER_SIZE 5
+int lastScaleReadings[ROLLING_BUFFER_SIZE];
+int indexInBuffer = 0;
+bool bufferFilled = false;
+
 HX711 scale;
 
 void setup() {
@@ -74,10 +79,20 @@ void loop() {
   }
 
   // we retrieve the readings of the scale and display them
-  if (displayIsOn) {
-    int value = scale.get_units();
-    matrix.print(value);
-    Serial.println(value);
+  int value = scale.get_units();
+  lastScaleReadings[indexInBuffer] = value;
+  indexInBuffer = (indexInBuffer+1) % ROLLING_BUFFER_SIZE;
+  if (indexInBuffer == 0 && !bufferFilled) {
+    bufferFilled = true;
+  }
+  if (displayIsOn && bufferFilled) {
+    int mean = 0;
+    for (int i = 0; i < ROLLING_BUFFER_SIZE; ++i) {
+      mean += lastScaleReadings[i];
+    }
+    mean /= ROLLING_BUFFER_SIZE;
+    matrix.print(mean);
+    Serial.println(mean);
     matrix.writeDisplay();
   }
 }
